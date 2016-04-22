@@ -1,0 +1,167 @@
+<html ng-app="app" ng-controller="MainCtrl">
+<head><title>google-chart</title></head>
+<body>
+
+	<table><tr>
+	<td>
+		<select ng-model="selectedRegion" style="width: {{width}}px">
+		<option ng-repeat="region in regionlist" value="{{region.id}}" ng-bind="region.name">
+		</option>
+		</select>
+		<div google-chart chart="chartObject" style="{{style}}"></div>
+
+	</td>
+	<td style="width : 100px">
+		<p align="center">Animate</p>
+		<p align="center"><input ng-model="bAnimate" type="checkbox"></input></p>
+	</td>
+	</tr></table>
+	
+</body>
+
+<script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.2.25/angular.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/angular-google-chart/0.1.0/ng-google-chart.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/angular-ui-bootstrap/0.13.4/ui-bootstrap-tpls.min.js"></script>
+<script>
+	var app = angular.module("app", ["googlechart"]);
+
+	app.controller('MainCtrl',['$scope','$http','$timeout', '$window', function($scope,$http,$timeout,$window) {
+		$scope.getdata = function() {
+			var url = '/chacha?q=' + $scope.selectedRegion;
+
+			$http({method: 'POST', url: url})
+				.success(function(data) {
+					for(var i in data.rows) { data.rows[i].c[0].v = new Date(data.rows[i].c[0].v); }
+					if(data.rows.length == 0) data.rows = $scope.rows;
+
+					$scope.chartObject.data = data;
+				})
+				.error(function(data) {
+					console.log('Error');
+				});
+		};
+
+		$scope.getRegionList = function() {
+			$http({method: 'POST', url:'/region'})
+				.success(function(data) {
+					$scope.regionlist = data;
+					$timeout(function() { $scope.selectedRegion = 25; }, 0);
+				})
+				.error(function(data) {
+					console.log('Error');
+				});
+		};
+
+		$scope.getRandom = function(min, max) {
+			return Math.floor(Math.random() * (max - min)) + min;
+		};
+
+		$scope.randomizeChart = function() {
+			var cnt = 30, min = -10, max = 20;
+
+			if($scope.first == true) {
+				var rows = [];
+
+				for(var i = 0; i < cnt; ++i) {
+					rows.push({c: [
+						{v: new Date(2016, 1, 1, i)},
+						{v: $scope.getRandom(min, max)},
+						{v: $scope.getRandom(min, max)},
+					]});
+				}
+
+				$scope.chartObject.data = {
+					cols: $scope.cols,
+					rows: rows
+				};
+
+				$scope.first = false;
+			}
+			else {
+				var rows = $scope.chartObject.data.rows;
+				for(var i = 0; i < rows.length; ++i) {
+					for(var j = 1; j <= 2; ++j) {
+						var v = $scope.getRandom(50, 100);
+						rows[i].c[j].v += $scope.getRandom(-v, v);
+					}
+				}
+			}
+
+			var rows = $scope.chartObject.data.rows;
+			for(var i = 0; i < rows.length; ++i) {
+				if(rows[i].c[1].v < 0) rows[i].c[1].v *= -1;
+				if(rows[i].c[2].v > 0) rows[i].c[2].v *= -1;
+			}
+		};
+
+		$scope.animate = function() {
+			var delay = 100, totaltime = 1000;
+			var len = Math.floor(totaltime / delay);
+
+			$scope.first = true;
+
+			for(var i = 0; i < len; ++i)
+			{
+				$timeout($scope.randomizeChart, i * delay);
+			}
+
+			$timeout($scope.getdata, len * delay);
+		};
+
+		$scope.update = function() {
+			if($scope.bAnimate) $scope.animate();
+			else $scope.getdata();
+		};
+
+		$scope.init = function() {
+			$scope.width = 1000;
+			$scope.height = 700;
+			$scope.chartObject = {};
+			$scope.chartObject.type = 'AnnotationChart';
+
+			$scope.chartObject.options = {
+				chart: {
+					title: 'Temperature',
+					subtitle: 'Celcius'
+				},
+
+				
+				min: -10,
+				max: 30,
+
+				zoomStartTime: new Date(0,1,1,1),
+				zoomEndTime: new Date(3000,1,1,1),
+
+				allValuesSuffix: ' \u2103',
+				displayAnnotations : true,
+				width: $scope.width,
+				height: $scope.height
+			};
+
+			$scope.style = { width: $scope.width + 'px', height: $scope.height + 'px' };
+			$scope.cols = [
+				{id: 'date', label: 'Day', type: 'date'},
+				{id: 'max-temp', label: 'Max_temp', type: 'number'},
+				{id: 'min-temp', label: 'Min_temp', type: 'number'}
+			];
+
+			$scope.rows = [{c: [
+				{v : new Date(2016, 1, 1, 1)},
+				{v : 5},
+				{v : 5}
+			]}];
+
+			$scope.bAnimate = true;
+			$scope.chartState = true;
+			$scope.getRegionList();
+		};
+
+		$scope.init();
+
+		$scope.$watch('selectedRegion', function() {
+				$scope.update();
+		});
+}]);	
+
+</script>
+</html>
