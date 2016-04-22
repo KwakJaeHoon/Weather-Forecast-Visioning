@@ -1,4 +1,4 @@
-# Weather-Forecast-Visioning
+# Weather-Forecast-Visualizing
 
 2016-03-14~2016-03-25 In Sogang University
 
